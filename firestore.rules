@@ -1,0 +1,436 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isBootstrapAdmin() {
+      return isSignedIn() &&
+             ('email_verified' in request.auth.token) &&
+             request.auth.token.email_verified == true &&
+             ('email' in request.auth.token) &&
+             request.auth.token.email == "chandragupt0040@gmail.com";
+    }
+
+    function callerUserExists() {
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function callerUser() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isApprovedMember() {
+      return isSignedIn() &&
+             callerUserExists() &&
+             callerUser().approvalStatus == 'APPROVED';
+    }
+
+    function callerRole() {
+      return callerUser().role;
+    }
+
+    function isLeadership() {
+      return isBootstrapAdmin() ||
+             (isApprovedMember() && callerRole() in ['PRINCIPAL', 'VICE_PRINCIPAL']);
+    }
+
+    function isValidRole(role) {
+      return role in [
+        'PRINCIPAL',
+        'VICE_PRINCIPAL',
+        'TEACHER',
+        'PARENT',
+        'STUDENT',
+        'ALUMNI',
+        'OTHER_STAFF',
+        'NON_TEACHING_STAFF'
+      ];
+    }
+
+    function isValidUserProfile(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.fullName is string && data.fullName.size() >= 2 && data.fullName.size() <= 80 &&
+             data.email is string && data.email.size() >= 3 && data.email.size() <= 120 &&
+             data.phone is string && data.phone.size() >= 7 && data.phone.size() <= 20 &&
+             data.role is string && isValidRole(data.role) &&
+             data.approvalStatus in ['PENDING', 'APPROVED', 'REJECTED'] &&
+             data.verificationId is string && data.verificationId.size() >= 2 && data.verificationId.size() <= 60 &&
+             data.houseOrDepartment is string && data.houseOrDepartment.size() >= 1 && data.houseOrDepartment.size() <= 80 &&
+             data.classOrDesignation is string && data.classOrDesignation.size() >= 1 && data.classOrDesignation.size() <= 80 &&
+             data.emailVerified is bool &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time &&
+             (!('wardOrSecondaryInfo' in data) || (data.wardOrSecondaryInfo is string && data.wardOrSecondaryInfo.size() <= 120)) &&
+             (!('bio' in data) || (data.bio is string && data.bio.size() <= 300)) &&
+             (!('rejectionReason' in data) || (data.rejectionReason is string && data.rejectionReason.size() <= 400)) &&
+             (!('reviewedBy' in data) || (data.reviewedBy is string && data.reviewedBy.size() <= 128));
+    }
+
+    function isValidDirectoryEntry(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.fullName is string && data.fullName.size() >= 2 && data.fullName.size() <= 80 &&
+             data.role is string && isValidRole(data.role) &&
+             data.houseOrDepartment is string && data.houseOrDepartment.size() >= 1 && data.houseOrDepartment.size() <= 80 &&
+             data.classOrDesignation is string && data.classOrDesignation.size() >= 1 && data.classOrDesignation.size() <= 80 &&
+             data.approvalStatus in ['PENDING', 'APPROVED', 'REJECTED'] &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time &&
+             (!('wardOrSecondaryInfo' in data) || (data.wardOrSecondaryInfo is string && data.wardOrSecondaryInfo.size() <= 120)) &&
+             (!('bio' in data) || (data.bio is string && data.bio.size() <= 300));
+    }
+
+    function isValidNotice(data) {
+      return data.authorId is string && data.authorId.size() >= 1 && data.authorId.size() <= 128 &&
+             data.authorName is string && data.authorName.size() >= 2 && data.authorName.size() <= 80 &&
+             data.authorRole is string && isValidRole(data.authorRole) &&
+             data.category in ['OFFICIAL_CIRCULAR', 'ACADEMIC_UPDATE', 'ALUMNI_SPOTLIGHT', 'CAMPUS_OPERATIONS', 'COMMUNITY_POST'] &&
+             data.title is string && data.title.size() >= 3 && data.title.size() <= 120 &&
+             data.body is string && data.body.size() >= 5 && data.body.size() <= 2000 &&
+             data.targetRole is string && (data.targetRole == 'ALL' || isValidRole(data.targetRole)) &&
+             data.pinned is bool &&
+             data.likesCount is int && data.likesCount >= 0 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidAcademicItem(data) {
+      return data.teacherId is string && data.teacherId.size() >= 1 && data.teacherId.size() <= 128 &&
+             data.teacherName is string && data.teacherName.size() >= 2 && data.teacherName.size() <= 80 &&
+             data.subject is string && data.subject.size() >= 2 && data.subject.size() <= 60 &&
+             data.targetClass is string && data.targetClass.size() >= 1 && data.targetClass.size() <= 40 &&
+             data.title is string && data.title.size() >= 3 && data.title.size() <= 120 &&
+             data.description is string && data.description.size() >= 3 && data.description.size() <= 1500 &&
+             data.dueDateLabel is string && data.dueDateLabel.size() >= 2 && data.dueDateLabel.size() <= 40 &&
+             data.itemType in ['ASSIGNMENT', 'EXAM_SCHEDULE', 'STUDY_MATERIAL'] &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidSchoolEvent(data) {
+      return data.organizerId is string && data.organizerId.size() >= 1 && data.organizerId.size() <= 128 &&
+             data.organizerName is string && data.organizerName.size() >= 2 && data.organizerName.size() <= 80 &&
+             data.organizerRole is string && isValidRole(data.organizerRole) &&
+             data.title is string && data.title.size() >= 3 && data.title.size() <= 120 &&
+             data.description is string && data.description.size() >= 5 && data.description.size() <= 1200 &&
+             data.eventDateLabel is string && data.eventDateLabel.size() >= 2 && data.eventDateLabel.size() <= 60 &&
+             data.location is string && data.location.size() >= 2 && data.location.size() <= 100 &&
+             data.audience in ['ALL', 'STUDENTS_PARENTS', 'STAFF', 'ALUMNI'] &&
+             data.rsvpCount is int && data.rsvpCount >= 0 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function canAccessChannel(channelId) {
+      return (channelId == 'ALL_COMMUNITY') ||
+             (channelId == 'FACULTY_STAFF' && callerRole() in ['PRINCIPAL', 'VICE_PRINCIPAL', 'TEACHER', 'OTHER_STAFF', 'NON_TEACHING_STAFF']) ||
+             (channelId == 'PARENTS_TEACHERS' && callerRole() in ['PRINCIPAL', 'VICE_PRINCIPAL', 'TEACHER', 'PARENT']) ||
+             (channelId == 'ALUMNI_CIRCLE' && callerRole() in ['PRINCIPAL', 'VICE_PRINCIPAL', 'ALUMNI', 'TEACHER']) ||
+             (channelId == 'STUDENT_CAMPUS' && callerRole() in ['PRINCIPAL', 'VICE_PRINCIPAL', 'TEACHER', 'STUDENT', 'OTHER_STAFF']);
+    }
+
+    function isValidMessage(data) {
+      return data.senderId is string && data.senderId.size() >= 1 && data.senderId.size() <= 128 &&
+             data.senderName is string && data.senderName.size() >= 2 && data.senderName.size() <= 80 &&
+             data.senderRole is string && isValidRole(data.senderRole) &&
+             data.channelType in ['CHANNEL', 'DIRECT'] &&
+             data.channelId is string && data.channelId.size() >= 3 && data.channelId.size() <= 140 &&
+             data.participantIds is list && data.participantIds.size() <= 2 &&
+             (data.participantIds.size() == 0 || data.participantIds[0] is string) &&
+             data.body is string && data.body.size() >= 1 && data.body.size() <= 1000 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidServiceRequest(data) {
+      return data.requesterId is string && data.requesterId.size() >= 1 && data.requesterId.size() <= 128 &&
+             data.requesterName is string && data.requesterName.size() >= 2 && data.requesterName.size() <= 80 &&
+             data.requesterRole is string && isValidRole(data.requesterRole) &&
+             data.category in ['LEAVE_REQUEST', 'HOSTEL_WELFARE', 'FACILITY_MAINTENANCE', 'PARENT_INQUIRY', 'ACADEMIC_SUPPORT'] &&
+             data.title is string && data.title.size() >= 3 && data.title.size() <= 120 &&
+             data.details is string && data.details.size() >= 5 && data.details.size() <= 1000 &&
+             data.status in ['OPEN', 'IN_REVIEW', 'RESOLVED', 'DECLINED'] &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time &&
+             (!('resolutionNote' in data) || (data.resolutionNote is string && data.resolutionNote.size() <= 400)) &&
+             (!('resolvedBy' in data) || (data.resolvedBy is string && data.resolvedBy.size() <= 128));
+    }
+
+    // 1. Private User Registration & PII
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && (request.auth.uid == userId || isLeadership());
+      allow list: if isSignedIn() && isLeadership();
+
+      allow create: if isSignedIn() &&
+                       isValidId(userId) &&
+                       request.auth.uid == userId &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().keys().hasAll(['userId', 'fullName', 'email', 'phone', 'role', 'approvalStatus', 'verificationId', 'houseOrDepartment', 'classOrDesignation', 'emailVerified', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'fullName', 'email', 'phone', 'role', 'approvalStatus', 'verificationId', 'houseOrDepartment', 'classOrDesignation', 'wardOrSecondaryInfo', 'bio', 'rejectionReason', 'reviewedBy', 'emailVerified', 'createdAt', 'updatedAt']) &&
+                       isValidUserProfile(incoming()) &&
+                       (incoming().approvalStatus == 'PENDING' || (isBootstrapAdmin() && incoming().approvalStatus == 'APPROVED'));
+
+      allow update: if isSignedIn() &&
+                       isValidId(userId) &&
+                       isValidUserProfile(incoming()) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt && (
+                         (
+                           request.auth.uid == userId &&
+                           incoming().role == existing().role && (
+                             (
+                               incoming().approvalStatus == existing().approvalStatus &&
+                               incoming().diff(existing()).affectedKeys().hasOnly(['fullName', 'phone', 'houseOrDepartment', 'classOrDesignation', 'wardOrSecondaryInfo', 'bio', 'emailVerified', 'updatedAt'])
+                             ) || (
+                               existing().approvalStatus == 'REJECTED' &&
+                               incoming().approvalStatus == 'PENDING' &&
+                               incoming().diff(existing()).affectedKeys().hasOnly(['fullName', 'phone', 'verificationId', 'houseOrDepartment', 'classOrDesignation', 'wardOrSecondaryInfo', 'bio', 'emailVerified', 'approvalStatus', 'rejectionReason', 'updatedAt'])
+                             )
+                           )
+                         ) || (
+                           isLeadership() &&
+                           incoming().approvalStatus in ['APPROVED', 'REJECTED', 'PENDING'] &&
+                           incoming().diff(existing()).affectedKeys().hasOnly(['approvalStatus', 'rejectionReason', 'reviewedBy', 'updatedAt'])
+                         )
+                       );
+
+      allow delete: if false;
+    }
+
+    // 2. PII-Free Community Directory
+    match /directory/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && (request.auth.uid == userId || isApprovedMember());
+      allow list: if isSignedIn() && isApprovedMember();
+
+      allow create: if isSignedIn() &&
+                       isValidId(userId) &&
+                       request.auth.uid == userId &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().keys().hasAll(['userId', 'fullName', 'role', 'houseOrDepartment', 'classOrDesignation', 'approvalStatus', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'fullName', 'role', 'houseOrDepartment', 'classOrDesignation', 'wardOrSecondaryInfo', 'bio', 'approvalStatus', 'createdAt', 'updatedAt']) &&
+                       isValidDirectoryEntry(incoming()) &&
+                       (incoming().approvalStatus == 'PENDING' || (isBootstrapAdmin() && incoming().approvalStatus == 'APPROVED'));
+
+      allow update: if isSignedIn() &&
+                       isValidId(userId) &&
+                       isValidDirectoryEntry(incoming()) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt && (
+                         (
+                           request.auth.uid == userId &&
+                           incoming().role == existing().role && (
+                             (
+                               incoming().approvalStatus == existing().approvalStatus &&
+                               incoming().diff(existing()).affectedKeys().hasOnly(['fullName', 'houseOrDepartment', 'classOrDesignation', 'wardOrSecondaryInfo', 'bio', 'updatedAt'])
+                             ) || (
+                               existing().approvalStatus == 'REJECTED' &&
+                               incoming().approvalStatus == 'PENDING' &&
+                               incoming().diff(existing()).affectedKeys().hasOnly(['fullName', 'houseOrDepartment', 'classOrDesignation', 'wardOrSecondaryInfo', 'bio', 'approvalStatus', 'updatedAt'])
+                             )
+                           )
+                         ) || (
+                           isLeadership() &&
+                           incoming().approvalStatus in ['APPROVED', 'REJECTED', 'PENDING'] &&
+                           incoming().diff(existing()).affectedKeys().hasOnly(['approvalStatus', 'updatedAt'])
+                         )
+                       );
+
+      allow delete: if false;
+    }
+
+    // 3. Notices, Circulars & Community Feed
+    match /notices/{noticeId} {
+      allow get: if isApprovedMember() && isValidId(noticeId);
+      allow list: if isApprovedMember();
+
+      allow create: if isApprovedMember() &&
+                       isValidId(noticeId) &&
+                       incoming().authorId == request.auth.uid &&
+                       incoming().authorRole == callerRole() &&
+                       incoming().likesCount == 0 &&
+                       incoming().keys().hasAll(['authorId', 'authorName', 'authorRole', 'category', 'title', 'body', 'targetRole', 'pinned', 'likesCount', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['authorId', 'authorName', 'authorRole', 'category', 'title', 'body', 'targetRole', 'pinned', 'likesCount', 'createdAt', 'updatedAt']) &&
+                       isValidNotice(incoming()) &&
+                       (!incoming().pinned || isLeadership()) && (
+                         (incoming().category == 'OFFICIAL_CIRCULAR' && isLeadership()) ||
+                         (incoming().category == 'ACADEMIC_UPDATE' && callerRole() in ['PRINCIPAL', 'VICE_PRINCIPAL', 'TEACHER']) ||
+                         (incoming().category == 'CAMPUS_OPERATIONS' && callerRole() in ['PRINCIPAL', 'VICE_PRINCIPAL', 'OTHER_STAFF', 'NON_TEACHING_STAFF']) ||
+                         (incoming().category == 'ALUMNI_SPOTLIGHT' && callerRole() in ['PRINCIPAL', 'VICE_PRINCIPAL', 'ALUMNI']) ||
+                         incoming().category == 'COMMUNITY_POST'
+                       );
+
+      allow update: if isApprovedMember() &&
+                       isValidId(noticeId) &&
+                       isValidNotice(incoming()) &&
+                       incoming().authorId == existing().authorId &&
+                       incoming().authorRole == existing().authorRole &&
+                       incoming().createdAt == existing().createdAt && (
+                         (
+                           (existing().authorId == request.auth.uid || isLeadership()) &&
+                           incoming().likesCount == existing().likesCount &&
+                           (!incoming().pinned || existing().pinned || isLeadership()) &&
+                           incoming().diff(existing()).affectedKeys().hasOnly(['title', 'body', 'targetRole', 'pinned', 'updatedAt'])
+                         ) || (
+                           incoming().diff(existing()).affectedKeys().hasOnly(['likesCount', 'updatedAt']) &&
+                           (incoming().likesCount == existing().likesCount + 1 || incoming().likesCount == existing().likesCount - 1)
+                         )
+                       );
+
+      allow delete: if isApprovedMember() && isValidId(noticeId) && (existing().authorId == request.auth.uid || isLeadership());
+    }
+
+    // 4. Academic Items (Assignments, Exams, Materials)
+    match /academic_items/{itemId} {
+      allow get: if isApprovedMember() && isValidId(itemId) && callerRole() in ['PRINCIPAL', 'VICE_PRINCIPAL', 'TEACHER', 'STUDENT', 'PARENT'];
+      allow list: if isApprovedMember() && callerRole() in ['PRINCIPAL', 'VICE_PRINCIPAL', 'TEACHER', 'STUDENT', 'PARENT'];
+
+      allow create: if isApprovedMember() &&
+                       isValidId(itemId) &&
+                       callerRole() in ['PRINCIPAL', 'VICE_PRINCIPAL', 'TEACHER'] &&
+                       incoming().teacherId == request.auth.uid &&
+                       incoming().keys().hasAll(['teacherId', 'teacherName', 'subject', 'targetClass', 'title', 'description', 'dueDateLabel', 'itemType', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['teacherId', 'teacherName', 'subject', 'targetClass', 'title', 'description', 'dueDateLabel', 'itemType', 'createdAt', 'updatedAt']) &&
+                       isValidAcademicItem(incoming());
+
+      allow update: if isApprovedMember() &&
+                       isValidId(itemId) &&
+                       isValidAcademicItem(incoming()) &&
+                       incoming().teacherId == existing().teacherId &&
+                       incoming().createdAt == existing().createdAt &&
+                       (existing().teacherId == request.auth.uid || isLeadership()) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['subject', 'targetClass', 'title', 'description', 'dueDateLabel', 'itemType', 'updatedAt']);
+
+      allow delete: if isApprovedMember() && isValidId(itemId) && (existing().teacherId == request.auth.uid || isLeadership());
+    }
+
+    // 5. School Events & Alumni Gatherings
+    match /school_events/{eventId} {
+      allow get: if isApprovedMember() && isValidId(eventId);
+      allow list: if isApprovedMember();
+
+      allow create: if isApprovedMember() &&
+                       isValidId(eventId) &&
+                       callerRole() in ['PRINCIPAL', 'VICE_PRINCIPAL', 'TEACHER', 'ALUMNI', 'OTHER_STAFF'] &&
+                       incoming().organizerId == request.auth.uid &&
+                       incoming().organizerRole == callerRole() &&
+                       incoming().rsvpCount == 0 &&
+                       incoming().keys().hasAll(['organizerId', 'organizerName', 'organizerRole', 'title', 'description', 'eventDateLabel', 'location', 'audience', 'rsvpCount', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['organizerId', 'organizerName', 'organizerRole', 'title', 'description', 'eventDateLabel', 'location', 'audience', 'rsvpCount', 'createdAt', 'updatedAt']) &&
+                       isValidSchoolEvent(incoming());
+
+      allow update: if isApprovedMember() &&
+                       isValidId(eventId) &&
+                       isValidSchoolEvent(incoming()) &&
+                       incoming().organizerId == existing().organizerId &&
+                       incoming().organizerRole == existing().organizerRole &&
+                       incoming().createdAt == existing().createdAt && (
+                         (
+                           (existing().organizerId == request.auth.uid || isLeadership()) &&
+                           incoming().rsvpCount == existing().rsvpCount &&
+                           incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'eventDateLabel', 'location', 'audience', 'updatedAt'])
+                         ) || (
+                           incoming().diff(existing()).affectedKeys().hasOnly(['rsvpCount', 'updatedAt']) &&
+                           (incoming().rsvpCount == existing().rsvpCount + 1 || incoming().rsvpCount == existing().rsvpCount - 1)
+                         )
+                       );
+
+      allow delete: if isApprovedMember() && isValidId(eventId) && (existing().organizerId == request.auth.uid || isLeadership());
+    }
+
+    // 6. Role-Scoped Channels & Direct Messaging
+    match /messages/{messageId} {
+      allow get: if isApprovedMember() && isValidId(messageId) && (
+        (existing().channelType == 'DIRECT' && request.auth.uid in existing().participantIds) ||
+        (existing().channelType == 'CHANNEL' && canAccessChannel(existing().channelId))
+      );
+
+      allow list: if isApprovedMember() && (
+        (existing().channelType == 'DIRECT' && request.auth.uid in existing().participantIds) ||
+        (existing().channelType == 'CHANNEL' && canAccessChannel(existing().channelId))
+      );
+
+      allow create: if isApprovedMember() &&
+                       isValidId(messageId) &&
+                       incoming().senderId == request.auth.uid &&
+                       incoming().senderRole == callerRole() &&
+                       incoming().keys().hasAll(['senderId', 'senderName', 'senderRole', 'channelType', 'channelId', 'participantIds', 'body', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['senderId', 'senderName', 'senderRole', 'channelType', 'channelId', 'participantIds', 'body', 'createdAt', 'updatedAt']) &&
+                       isValidMessage(incoming()) && (
+                         (incoming().channelType == 'DIRECT' && request.auth.uid in incoming().participantIds && incoming().participantIds.size() == 2) ||
+                         (incoming().channelType == 'CHANNEL' && incoming().participantIds.size() == 0 && canAccessChannel(incoming().channelId))
+                       );
+
+      allow update: if false;
+      allow delete: if isApprovedMember() && isValidId(messageId) && (existing().senderId == request.auth.uid || isLeadership());
+    }
+
+    // 7. Service Requests (Leave, Welfare, Maintenance, Parent Inquiries)
+    match /service_requests/{requestId} {
+      allow get: if isApprovedMember() && isValidId(requestId) && (
+        existing().requesterId == request.auth.uid ||
+        isLeadership() ||
+        (callerRole() == 'TEACHER' && existing().category in ['PARENT_INQUIRY', 'ACADEMIC_SUPPORT']) ||
+        (callerRole() in ['OTHER_STAFF', 'NON_TEACHING_STAFF'] && existing().category in ['HOSTEL_WELFARE', 'FACILITY_MAINTENANCE'])
+      );
+
+      allow list: if isApprovedMember() && (
+        existing().requesterId == request.auth.uid ||
+        isLeadership() ||
+        (callerRole() == 'TEACHER' && existing().category in ['PARENT_INQUIRY', 'ACADEMIC_SUPPORT']) ||
+        (callerRole() in ['OTHER_STAFF', 'NON_TEACHING_STAFF'] && existing().category in ['HOSTEL_WELFARE', 'FACILITY_MAINTENANCE'])
+      );
+
+      allow create: if isApprovedMember() &&
+                       isValidId(requestId) &&
+                       incoming().requesterId == request.auth.uid &&
+                       incoming().requesterRole == callerRole() &&
+                       incoming().status == 'OPEN' &&
+                       incoming().keys().hasAll(['requesterId', 'requesterName', 'requesterRole', 'category', 'title', 'details', 'status', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['requesterId', 'requesterName', 'requesterRole', 'category', 'title', 'details', 'status', 'resolutionNote', 'resolvedBy', 'createdAt', 'updatedAt']) &&
+                       isValidServiceRequest(incoming());
+
+      allow update: if isApprovedMember() &&
+                       isValidId(requestId) &&
+                       isValidServiceRequest(incoming()) &&
+                       incoming().requesterId == existing().requesterId &&
+                       incoming().requesterRole == existing().requesterRole &&
+                       incoming().category == existing().category &&
+                       incoming().createdAt == existing().createdAt && (
+                         (
+                           existing().requesterId == request.auth.uid &&
+                           existing().status == 'OPEN' &&
+                           incoming().status == 'OPEN' &&
+                           incoming().diff(existing()).affectedKeys().hasOnly(['title', 'details', 'updatedAt'])
+                         ) || (
+                           (
+                             isLeadership() ||
+                             (callerRole() == 'TEACHER' && existing().category in ['PARENT_INQUIRY', 'ACADEMIC_SUPPORT']) ||
+                             (callerRole() in ['OTHER_STAFF', 'NON_TEACHING_STAFF'] && existing().category in ['HOSTEL_WELFARE', 'FACILITY_MAINTENANCE'])
+                           ) &&
+                           (isLeadership() || !(existing().status in ['RESOLVED', 'DECLINED'])) &&
+                           incoming().diff(existing()).affectedKeys().hasOnly(['status', 'resolutionNote', 'resolvedBy', 'updatedAt'])
+                         )
+                       );
+
+      allow delete: if isApprovedMember() && isValidId(requestId) && ((existing().requesterId == request.auth.uid && existing().status == 'OPEN') || isLeadership());
+    }
+  }
+}

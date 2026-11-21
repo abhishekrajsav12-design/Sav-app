@@ -1,0 +1,302 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Private registration record and PII for a SAV FAMILY member",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Firebase Auth UID" },
+        "fullName": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "role": {
+          "type": "string",
+          "enum": [
+            "PRINCIPAL",
+            "VICE_PRINCIPAL",
+            "TEACHER",
+            "PARENT",
+            "STUDENT",
+            "ALUMNI",
+            "OTHER_STAFF",
+            "NON_TEACHING_STAFF"
+          ]
+        },
+        "approvalStatus": {
+          "type": "string",
+          "enum": ["PENDING", "APPROVED", "REJECTED"]
+        },
+        "verificationId": { "type": "string" },
+        "houseOrDepartment": { "type": "string" },
+        "classOrDesignation": { "type": "string" },
+        "wardOrSecondaryInfo": { "type": "string" },
+        "bio": { "type": "string" },
+        "rejectionReason": { "type": "string" },
+        "reviewedBy": { "type": "string" },
+        "emailVerified": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp" }
+      },
+      "required": [
+        "userId",
+        "fullName",
+        "email",
+        "phone",
+        "role",
+        "approvalStatus",
+        "verificationId",
+        "houseOrDepartment",
+        "classOrDesignation",
+        "emailVerified",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "DirectoryEntry": {
+      "title": "DirectoryEntry",
+      "description": "PII-free community directory profile for approved SAV FAMILY members",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "fullName": { "type": "string" },
+        "role": {
+          "type": "string",
+          "enum": [
+            "PRINCIPAL",
+            "VICE_PRINCIPAL",
+            "TEACHER",
+            "PARENT",
+            "STUDENT",
+            "ALUMNI",
+            "OTHER_STAFF",
+            "NON_TEACHING_STAFF"
+          ]
+        },
+        "houseOrDepartment": { "type": "string" },
+        "classOrDesignation": { "type": "string" },
+        "wardOrSecondaryInfo": { "type": "string" },
+        "bio": { "type": "string" },
+        "approvalStatus": {
+          "type": "string",
+          "enum": ["PENDING", "APPROVED", "REJECTED"]
+        },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId",
+        "fullName",
+        "role",
+        "houseOrDepartment",
+        "classOrDesignation",
+        "approvalStatus",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Notice": {
+      "title": "Notice",
+      "description": "Official school circulars, academic notices, and community posts",
+      "type": "object",
+      "properties": {
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "authorRole": { "type": "string" },
+        "category": {
+          "type": "string",
+          "enum": [
+            "OFFICIAL_CIRCULAR",
+            "ACADEMIC_UPDATE",
+            "ALUMNI_SPOTLIGHT",
+            "CAMPUS_OPERATIONS",
+            "COMMUNITY_POST"
+          ]
+        },
+        "title": { "type": "string" },
+        "body": { "type": "string" },
+        "targetRole": { "type": "string" },
+        "pinned": { "type": "boolean" },
+        "likesCount": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "authorId",
+        "authorName",
+        "authorRole",
+        "category",
+        "title",
+        "body",
+        "targetRole",
+        "pinned",
+        "likesCount",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "AcademicItem": {
+      "title": "AcademicItem",
+      "description": "Class assignments, exam schedules, and study resources",
+      "type": "object",
+      "properties": {
+        "teacherId": { "type": "string" },
+        "teacherName": { "type": "string" },
+        "subject": { "type": "string" },
+        "targetClass": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "dueDateLabel": { "type": "string" },
+        "itemType": {
+          "type": "string",
+          "enum": ["ASSIGNMENT", "EXAM_SCHEDULE", "STUDY_MATERIAL"]
+        },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "teacherId",
+        "teacherName",
+        "subject",
+        "targetClass",
+        "title",
+        "description",
+        "dueDateLabel",
+        "itemType",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "SchoolEvent": {
+      "title": "SchoolEvent",
+      "description": "SAV campus events, house competitions, and alumni gatherings",
+      "type": "object",
+      "properties": {
+        "organizerId": { "type": "string" },
+        "organizerName": { "type": "string" },
+        "organizerRole": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "eventDateLabel": { "type": "string" },
+        "location": { "type": "string" },
+        "audience": {
+          "type": "string",
+          "enum": ["ALL", "STUDENTS_PARENTS", "STAFF", "ALUMNI"]
+        },
+        "rsvpCount": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "organizerId",
+        "organizerName",
+        "organizerRole",
+        "title",
+        "description",
+        "eventDateLabel",
+        "location",
+        "audience",
+        "rsvpCount",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "SchoolMessage": {
+      "title": "SchoolMessage",
+      "description": "Role-scoped channel and direct messages",
+      "type": "object",
+      "properties": {
+        "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "senderRole": { "type": "string" },
+        "channelType": { "type": "string", "enum": ["CHANNEL", "DIRECT"] },
+        "channelId": { "type": "string" },
+        "participantIds": { "type": "array" },
+        "body": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "senderId",
+        "senderName",
+        "senderRole",
+        "channelType",
+        "channelId",
+        "participantIds",
+        "body",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "ServiceRequest": {
+      "title": "ServiceRequest",
+      "description": "Leave requests, hostel welfare, maintenance tickets, and parent inquiries",
+      "type": "object",
+      "properties": {
+        "requesterId": { "type": "string" },
+        "requesterName": { "type": "string" },
+        "requesterRole": { "type": "string" },
+        "category": {
+          "type": "string",
+          "enum": [
+            "LEAVE_REQUEST",
+            "HOSTEL_WELFARE",
+            "FACILITY_MAINTENANCE",
+            "PARENT_INQUIRY",
+            "ACADEMIC_SUPPORT"
+          ]
+        },
+        "title": { "type": "string" },
+        "details": { "type": "string" },
+        "status": {
+          "type": "string",
+          "enum": ["OPEN", "IN_REVIEW", "RESOLVED", "DECLINED"]
+        },
+        "resolutionNote": { "type": "string" },
+        "resolvedBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "requesterId",
+        "requesterName",
+        "requesterRole",
+        "category",
+        "title",
+        "details",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Private user registration records and PII"
+    },
+    "/directory/{userId}": {
+      "schema": { "$ref": "#/entities/DirectoryEntry" },
+      "description": "PII-free SAV community member directory"
+    },
+    "/notices/{noticeId}": {
+      "schema": { "$ref": "#/entities/Notice" },
+      "description": "School circulars, updates, and community feed posts"
+    },
+    "/academic_items/{itemId}": {
+      "schema": { "$ref": "#/entities/AcademicItem" },
+      "description": "Class assignments, exam schedules, and study materials"
+    },
+    "/school_events/{eventId}": {
+      "schema": { "$ref": "#/entities/SchoolEvent" },
+      "description": "SAV campus events and alumni gatherings"
+    },
+    "/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/SchoolMessage" },
+      "description": "Role-gated channels and direct messages"
+    },
+    "/service_requests/{requestId}": {
+      "schema": { "$ref": "#/entities/ServiceRequest" },
+      "description": "Leave, welfare, maintenance, and academic support requests"
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "SAV FAMILY",
+  "description": "Private school community and management platform for Simultala Awasiya Vidyalaya (One Family, One Community).",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
